@@ -5,15 +5,16 @@ import DelayNode from '../components/DelayNode';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
-function Sidebar({nodeData, onLoadScenario  , onNodeClick}) {
+function Sidebar({nodeData, onLoadScenario, onNodeClick}) {
   const [devices, setDevices] = useState({});
   const idCounter = useRef(0);
 
-  const onDragStart = (event, nodeType, label, config, deviceData = null, uniqueId) => {
+  const onDragStart = (event, nodeType, label, config, deviceData, uniqueId, deviceId) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.setData('application/label', label);
     event.dataTransfer.setData('application/config', JSON.stringify(config));
-    event.dataTransfer.setData('application/deviceId', uniqueId); 
+    event.dataTransfer.setData('application/uniqueId', uniqueId);
+    event.dataTransfer.setData('application/deviceId', deviceId || ''); 
     
     if (deviceData) {
       event.dataTransfer.setData('application/deviceData', JSON.stringify(deviceData));
@@ -63,7 +64,8 @@ function Sidebar({nodeData, onLoadScenario  , onNodeClick}) {
                   `${deviceData.device_name}-${deviceId}/${uniqueId}`, 
                   deviceData.config, 
                   deviceData,
-                  uniqueId
+                  uniqueId, 
+                  deviceId 
                 )}
                 draggable
               >
@@ -88,7 +90,8 @@ function Sidebar({nodeData, onLoadScenario  , onNodeClick}) {
                 }
             },
             null, 
-            idCounter.current
+            idCounter.current,
+            null
           )}
           draggable
         >
@@ -102,7 +105,8 @@ function Sidebar({nodeData, onLoadScenario  , onNodeClick}) {
             `Condition-${idCounter.current++}`,
             {},
             null, 
-            idCounter.current
+            idCounter.current,
+            null
           )}
           draggable
         >
@@ -113,6 +117,5 @@ function Sidebar({nodeData, onLoadScenario  , onNodeClick}) {
   );
 }
 
-//"proxy": "http://localhost:5000",
 
 export default Sidebar;

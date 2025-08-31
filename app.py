@@ -7,9 +7,9 @@ from werkzeug.utils import secure_filename
 import datetime
 import uuid
 import time
+from time import sleep
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -150,10 +150,58 @@ def reset(device_id):
     redis_client.lpush(f'{device_id}:commands', "reset")
     return jsonify({'status': 'success'})
 
-@app.route('/activate/<device_id>', methods=['POST'])
-def activate(device_id):
-    redis_client.lpush(f'{device_id}:commands', "activate")
-    return jsonify({'status': 'success'})
+@app.route('/start/<device_id>', methods=['POST'])
+def start(device_id):
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        config = data.get('config', {})
+        node_id = data.get('nodeId')
+        scenario_name = data.get('scenarioName')
+        
+        logger.info(f"Starting device {device_id} for node {node_id} in scenario {scenario_name}")
+        logger.info(f"Device config: {config}")
+        
+        redis_client.set(f'{device_id}:current_config', json.dumps(config))
+        logger.info(f"Stored config for device {device_id}")
+        
+        simple_config = {}
+        for key, value in config.items():
+            simple_config[key] = value
+        
+        redis_client.set(f'{device_id}:status', 'in progress')
+        
+        command_data = {
+            'command': 'start',
+            'config': simple_config,
+            'node_id': node_id,
+            'scenario_name': scenario_name
+        }
+        redis_client.lpush(f'{device_id}:commands', json.dumps(command_data))
+        
+        logger.info(f"Device {device_id} started with command: {command_data}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Device {device_id} started successfully',
+            'deviceId': device_id,
+            'nodeId': node_id,
+            'config': simple_config,
+            'device_status': 'in progress'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error starting device {device_id}: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Device start failed: {str(e)}',
+            'deviceId': device_id,
+            'nodeId': data.get('nodeId') if 'data' in locals() else None
+        }), 500
+
 
 @app.route('/finish/<device_id>', methods=['POST'])
 def finish(device_id):
@@ -268,7 +316,6 @@ def upload_image():
     
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        # Add timestamp and field name to make filename unique
         field_name = request.form.get('fieldName', '')
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         unique_filename = f"{field_name}_{timestamp}_{filename}"
@@ -308,28 +355,68 @@ def upload_image():
 def serve_uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-@app.route('/execute_device', methods=['POST'])
-def execute_device():
+    
+@app.route('/send_status/<device_id>', methods=['POST'])
+def send_status(device_id):
+    """
+    Store device status in Redis
+    Expected JSON payload: {'status': 'completed|failed|in progress'}
+    """
     try:
         data = request.get_json()
         
-        device_id = data.get('deviceId')
-        config = data.get('config', {})
-        node_id = data.get('nodeId')
-        scenario_name = data.get('scenarioName')
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
         
-        logger.info(f"Executing device {device_id} for node {node_id} in scenario {scenario_name}")
-        logger.info(f"Device config: {config}")
+        status = data.get('status')
         
+        if not status:
+            return jsonify({'error': 'Status field is required'}), 400
+        
+        valid_statuses = ['completed', 'failed', 'in progress']
+        if status not in valid_statuses:
+            return jsonify({
+                'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'
+            }), 400
+        
+        redis_client.set(f'{device_id}:status', status)
+        print(status)
+        redis_client.set(f'{device_id}:status', 'completed')
+        
+        logger.info(f"Device {device_id} status updated to: {status}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Device {device_id} status updated to {status}',
+            'device_id': device_id,
+            'status': status
+        }), 200
         
     except Exception as e:
-        logger.error(f"Error executing device: {str(e)}")
+        logger.error(f"Error updating device status: {str(e)}")
         return jsonify({
             'status': 'error',
-            'message': f'Device execution failed: {str(e)}',
-            'deviceId': data.get('deviceId') if data else None,
-            'nodeId': data.get('nodeId') if data else None
+            'message': f'Failed to update device status: {str(e)}'
         }), 500
+
+@app.route('/get_status/<device_id>', methods=['GET'])
+def get_status(device_id):
+    try:
+        status = redis_client.get(f'{device_id}:status') or 'unknown'
+        print(status)
+        
+        return jsonify({
+            'status': 'success',
+            'device_id': device_id,
+            'status': status
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Failed to get device status: {str(e)}'
+        }), 500
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
