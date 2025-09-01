@@ -20,7 +20,10 @@ function NodeDetails({ nodeData, onClose, onUpdate, scenarioName, nodes, edges }
           if (config.value.startsWith('data:image/')) {
             previews[key] = config.value;
           } else {
-            previews[key] = config.value;
+            const imageUrl = config.value.startsWith('/static/uploads/') 
+              ? `${API_BASE_URL}${config.value}`
+              : config.value;
+            previews[key] = imageUrl;
           }
         }
       });
@@ -92,6 +95,10 @@ function NodeDetails({ nodeData, onClose, onUpdate, scenarioName, nodes, edges }
         const data = await response.json();
         nodeData.data.config[fieldName].value = data.imageUrl;
         delete nodeData.data.config[fieldName].tempDataUrl;
+        
+        const fullImageUrl = `${API_BASE_URL}${data.imageUrl}`;
+        setImagePreviews(prev => ({ ...prev, [fieldName]: fullImageUrl }));
+        
         setUploadStatus(prev => ({ ...prev, [fieldName]: 'success' }));
         setTimeout(() => {
           setUploadStatus(prev => {
@@ -246,6 +253,10 @@ function NodeDetails({ nodeData, onClose, onUpdate, scenarioName, nodes, edges }
                               src={imagePreviews[item]} 
                               alt={`${item} preview`} 
                               className={styles.imagePreview}
+                              onError={(e) => {
+                                console.error('Image failed to load:', imagePreviews[item]);
+                                e.target.style.display = 'none';
+                              }}
                             />
                           </div>
                         )}
@@ -297,5 +308,4 @@ function NodeDetails({ nodeData, onClose, onUpdate, scenarioName, nodes, edges }
 }
 
 export default NodeDetails;
-
 
