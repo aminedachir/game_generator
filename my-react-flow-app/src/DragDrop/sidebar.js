@@ -78,25 +78,26 @@ function Sidebar({nodeData, onLoadScenario, onNodeClick}) {
         )}
         <br></br><br></br>
         <p className={styles.titledev2}>virtual nodes</p>
-        <div
-          className="dndnode device"
-          onDragStart={(event) => onDragStart(
-            event,
-            'default',
-            `Timer-${idCounter.current++}`,
-            {
-              "seconds":{
-                    'type' : 'number'
+          <div
+            className="dndnode device"
+            onDragStart={(event) => onDragStart(
+              event,
+              'delay',  
+              `Timer-${idCounter.current++}`,
+              {
+                "delaySeconds": {
+                  'type': 'number',
+                  'value': 3  
                 }
-            },
-            null, 
-            idCounter.current,
-            null
-          )}
-          draggable
-        >
-          Timer
-        </div>
+              },
+              { deviceType: 'delay' }, 
+              idCounter.current,
+              null
+            )}
+            draggable
+          >
+            Timer
+          </div>
         <div
           className="dndnode device"
           onDragStart={(event) => onDragStart(

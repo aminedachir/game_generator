@@ -68,8 +68,8 @@ const DnDFlow = ({nodeData, scenarioToLoad, onScenarioSaved }) => {
   activePaths: new Set(),
   shouldStop: false, 
   globalError: null,
-  shouldCompleteEarly: false, // Add this flag
-  earlyCompletionReason: null // Add this for logging
+  shouldCompleteEarly: false, 
+  earlyCompletionReason: null 
 });
 
 const isRunningRef = useRef(false);
@@ -312,39 +312,41 @@ const isRunningRef = useRef(false);
   };
 
   const executeDelayNode = async (node) => {
-    const delaySeconds = node.data.config?.delaySeconds?.value || node.data.delaySeconds || 3;
-    console.log(`Delay node waiting for ${delaySeconds} seconds`);
-    
-    for (let i = delaySeconds; i > 0; i--) {
+  const delaySeconds = node.data.config?.delaySeconds?.value || node.data.delaySeconds || 3;
+  console.log(`Delay node waiting for ${delaySeconds} seconds`);
+  
+  const delayMs = parseInt(delaySeconds) * 1000;
+  
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
       if (!isRunningRef.current) {
-        throw new Error('Execution was stopped by user');
+        reject(new Error('Execution was stopped by user'));
+      } else {
+        resolve();
       }
-      
-      setNodes(nds => nds.map(n => ({
-        ...n,
-        data: n.id === node.id 
-          ? { ...n.data, remainingTime: i }
-          : n.data
-      })));
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-    setNodes(nds => nds.map(n => ({
-      ...n,
-      data: n.id === node.id 
-        ? { ...n.data, remainingTime: undefined }
-        : n.data
-    })));
-  };
+    }, delayMs);
+    
+    const checkInterval = setInterval(() => {
+      if (!isRunningRef.current) {
+        clearTimeout(timeout);
+        clearInterval(checkInterval);
+        reject(new Error('Execution was stopped by user'));
+      }
+    }, 100);
+    
+    setTimeout(() => {
+      clearInterval(checkInterval);
+    }, delayMs);
+  });
+};
 
   const checkForFlowCompletion = () => {
-  // Find all condition nodes in the flow
   const conditionNodes = nodes.filter(node => node.data.deviceType === 'condition');
   
   if (conditionNodes.length === 0) {
-    return false; // No condition nodes, use normal flow completion
+    return false; 
   }
   
-  // Check if all condition nodes have their required sources completed
   for (const conditionNode of conditionNodes) {
     const { config } = conditionNode.data;
     
@@ -361,39 +363,35 @@ const isRunningRef = useRef(false);
       .map(source => source.sourceNodeId);
     
     if (checkedSources.length === 0) {
-      continue; // This condition node has no requirements
+      continue; 
     }
     
-    // Check if all checked sources for this condition node are completed
     const allCheckedCompleted = checkedSources.every(sourceId => 
       executionState.completedNodes.includes(sourceId)
     );
     
-    // Check if any checked source failed
     const anyCheckedFailed = checkedSources.some(sourceId => 
       executionState.failedNodes.includes(sourceId)
     );
     
     if (anyCheckedFailed) {
-      return false; // Can't complete if required sources failed
+      return false; 
     }
     
     if (allCheckedCompleted) {
-      // Check if this condition node connects to an output node
       const nextNodes = getNextNodes(conditionNode.id);
       const hasOutputNode = nextNodes.some(nextNode => nextNode.type === 'output');
       
       if (hasOutputNode) {
-        // IMPORTANT: Also check if the output node itself has completed
         const outputNode = nextNodes.find(nextNode => nextNode.type === 'output');
         const outputCompleted = executionState.completedNodes.includes(outputNode.id);
         
         if (outputCompleted) {
           console.log(`Condition node ${conditionNode.data.label} requirements satisfied and output node completed`);
-          return true; // Flow can complete
+          return true; 
         } else {
           console.log(`Condition satisfied but waiting for output node to complete`);
-          return false; // Wait for output node
+          return false; 
         }
       }
     }
@@ -438,11 +436,9 @@ const isRunningRef = useRef(false);
       throw new Error('Execution was stopped by user');
     }
     
-    // Use the ref to get current state
     const currentCompleted = completionStateRef.current.completedNodes;
     const currentFailed = completionStateRef.current.failedNodes;
     
-    // Check if any required source failed
     const anySourceFailed = checkedSources.some(sourceId => 
       currentFailed.includes(sourceId)
     );
@@ -454,7 +450,6 @@ const isRunningRef = useRef(false);
       throw new Error(`Required source node(s) failed: ${failedSources.join(', ')}`);
     }
     
-    // Check if all required sources completed
     const allCheckedSourcesCompleted = checkedSources.every(sourceId => 
       currentCompleted.includes(sourceId)
     );
@@ -512,7 +507,6 @@ const isRunningRef = useRef(false);
   try {
     await executeNode(startNode, pathId);
     
-    // Check for early completion signal after executing each node
     if (executionState.shouldCompleteEarly) {
       console.log('Early completion signal received - stopping flow execution');
       updateExecutionState(prev => ({
@@ -553,7 +547,6 @@ const isRunningRef = useRef(false);
 
       const results = await Promise.allSettled(branchPromises);
       
-      // Check if any branch returned early completion
       const hasEarlyComplete = results.some(result => 
         result.status === 'fulfilled' && result.value === 'EARLY_COMPLETE'
       );
@@ -621,8 +614,6 @@ const isRunningRef = useRef(false);
 
     await traverseFlow(startNode.id);
     
-    // Only show normal completion if we haven't already completed via condition check
-    // and there are no condition nodes
     const hasConditionNodes = nodes.some(node => node.data.deviceType === 'condition');
     
     if (isRunningRef.current && !executionState.shouldStop && !hasConditionNodes) {
@@ -678,7 +669,7 @@ const isRunningRef = useRef(false);
   updateExecutionState(prev => ({
     ...prev,
     isRunning: false,
-    shouldStop: false, // Reset this flag
+    shouldStop: false, 
     activePaths: new Set(),
     executionLog: [...prev.executionLog, {
       type: 'warning',
@@ -960,15 +951,12 @@ useEffect(() => {
     failedNodes: executionState.failedNodes
   };
   
-  // Check if flow should complete after each state update
   if (executionState.isRunning && !executionState.shouldStop) {
     const shouldComplete = checkForFlowCompletion();
     if (shouldComplete) {
       console.log('Flow completion condition met - completing execution');
       
-      // Use a longer timeout to ensure UI updates are complete
       setTimeout(() => {
-        // Double check we're still running and haven't already completed
         if (isRunningRef.current && !executionState.shouldStop) {
           updateExecutionState(prev => ({
             ...prev,
@@ -985,7 +973,7 @@ useEffect(() => {
           console.log('Flow execution completed - all required conditions satisfied');
           alert('Flow execution completed successfully!');
         }
-      }, 300); // Increased timeout to ensure output node visuals are updated
+      }, 300); 
     }
   }
 }, [executionState.completedNodes, executionState.failedNodes, executionState.isRunning]);

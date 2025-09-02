@@ -278,6 +278,11 @@ function NodeDetails({ nodeData, onClose, onUpdate, scenarioName, nodes, edges }
                         name={item} 
                         type={value.type} 
                         defaultValue={value.value}
+                        {...(nodeData.data.deviceType === 'delay' && item === 'delaySeconds' ? {
+                          type: 'number',
+                          min: '1',
+                          step: '1'
+                        } : {})}
                       />
                     )}
                   </div>
