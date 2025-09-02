@@ -1104,9 +1104,17 @@ useEffect(() => {
             </button>
           )}
 
-          <button className={styles.theme__button} onClick={isEditable ? handleSave : handleEdit}>
-            {isEditable ? 'SAVE' : 'EDIT'}
+          {!isEditable && !executionState.isRunning && (
+          <button className={styles.theme__button} onClick={handleEdit}>
+            EDIT
           </button>
+          )}
+
+          {isEditable && (
+            <button className={styles.theme__button} onClick={handleSave}>
+              SAVE 
+            </button>
+          )}
 
           <button className={styles.theme__button} onClick={handledeleteScenario}>
             DELETE
