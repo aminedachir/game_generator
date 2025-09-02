@@ -315,7 +315,7 @@ const isRunningRef = useRef(false);
 
   const executeDelayNode = async (node) => {
   const delaySeconds = node.data.config?.delaySeconds?.value || node.data.delaySeconds || 3;
-  console.log(`Delay node waiting for ${delaySeconds} seconds`);
+  alert(`Delay node waiting for ${delaySeconds} seconds`);
   
   const delayMs = parseInt(delaySeconds) * 1000;
   
@@ -1073,6 +1073,12 @@ useEffect(() => {
             </button>
           )}
           
+          {!isEditable && executionState.isRunning && (
+            <button className={styles.theme__button}>
+              PAUSE
+            </button>
+          )}
+
           {isEditable && !IsCreatingNew && (
             <button className={styles.theme__button} onClick={handleSaveAsAndStayEditable}>
               SAVE AS
