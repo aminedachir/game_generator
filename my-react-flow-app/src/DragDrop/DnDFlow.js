@@ -44,7 +44,7 @@ const getId = () => {
   return `N${idnumber}`;
 };
 
-const DnDFlow = ({nodeData, scenarioToLoad, onScenarioSaved }) => {
+const DnDFlow = ({scenarioToLoad, onScenarioSaved }) => {
   const reactFlowWrapper = useRef(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -52,7 +52,6 @@ const DnDFlow = ({nodeData, scenarioToLoad, onScenarioSaved }) => {
   const [currentScenarioName, setCurrentScenarioName] = useState('');
   const [isEditable, setIsEditable] = useState(!scenarioToLoad);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [showDelayConfig, setShowDelayConfig] = useState(false);
   const [isCreatingNew, setIsCreatingNew] = useState(!scenarioToLoad);
   const [hasInitialized, setHasInitialized] = useState(false);
 
@@ -231,35 +230,38 @@ const isRunningRef = useRef(false);
             
             console.log(`Device ${originalDeviceId} status: ${status} (attempt ${attempts})`);
             
-            setNodes(nds => nds.map(n => {
-              if (n.id === node.id) {
-                let backgroundColor, borderColor;
-                
-                switch (status) {
-                  case 'in progress':
-                    backgroundColor = '#ffeb3b';
-                    borderColor = '#ff9800';
-                    break;
-                  case 'completed':
-                    backgroundColor = '#4caf50';
-                    borderColor = '#2e7d32';
-                    break;
-                  case 'failed':
-                    backgroundColor = '#f44336';
-                    borderColor = '#d32f2f';
-                    break;
-                  default:
-                    backgroundColor = '#ffeb3b';
-                    borderColor = '#ff9800';
+            const updateNodeStyle = (currentStatus) => {
+              setNodes(nds => nds.map(n => {
+                if (n.id === node.id) {
+                  let backgroundColor, borderColor;
+                  switch (currentStatus) {
+                    case 'in progress':
+                      backgroundColor = '#ffeb3b';
+                      borderColor = '#ff9800';
+                      break;
+                    case 'completed':
+                      backgroundColor = '#4caf50';
+                      borderColor = '#2e7d32';
+                      break;
+                    case 'failed':
+                      backgroundColor = '#f44336';
+                      borderColor = '#d32f2f';
+                      break;
+                    default:
+                      backgroundColor = '#ffeb3b';
+                      borderColor = '#ff9800';
+                  }
+                  
+                  return {
+                    ...n,
+                    style: { ...n.style, backgroundColor, border: `2px solid ${borderColor}` }
+                  };
                 }
-                
-                return {
-                  ...n,
-                  style: { ...n.style, backgroundColor, border: `2px solid ${borderColor}` }
-                };
-              }
-              return n;
-            }));
+                return n;
+              }));
+            };
+
+            updateNodeStyle(status);
             
             if (status === 'completed') {
               console.log(`Device ${originalDeviceId} completed successfully`);
@@ -689,16 +691,11 @@ const isRunningRef = useRef(false);
   const onNodeClick = (e, clickedNode) => {
     if (clickedNode.data.deviceType === 'delay') {
       setSelectedNode(clickedNode);
-      setShowDelayConfig(true);
     } else if (!(clickedNode.type === 'input' || clickedNode.type === 'output')) {
       setSelectedNode(clickedNode);
     }
   };
 
-  const closeDelayConfig = () => {
-    setShowDelayConfig(false);
-    setSelectedNode(null);
-  };
 
   const updateNodeData = (nodeId, newData) => {
     setNodes((nds) =>
@@ -708,7 +705,6 @@ const isRunningRef = useRef(false);
           : node
       )
     );
-    setShowDelayConfig(false);
     setSelectedNode(null);
   };
 
@@ -909,9 +905,8 @@ const isRunningRef = useRef(false);
       setNodes(response.data.nodes || []);
       setEdges(response.data.edges || []);
       setCurrentScenarioName(flowId);
-      
-      setIsEditable(false);
       setIsCreatingNew(false);
+      setIsEditable(false);
       
       if (response.data.viewport && rfInstance) {
         rfInstance.setViewport(response.data.viewport);

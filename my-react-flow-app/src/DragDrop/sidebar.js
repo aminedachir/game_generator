@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styles from './MyComponent.module.css';
-import './style.css'
-import DelayNode from '../components/DelayNode';
+import './style.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
