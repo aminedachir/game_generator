@@ -52,7 +52,7 @@ const DnDFlow = ({scenarioToLoad, onScenarioSaved }) => {
   const [currentScenarioName, setCurrentScenarioName] = useState('');
   const [isEditable, setIsEditable] = useState(!scenarioToLoad);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [, setIsCreatingNew] = useState(!scenarioToLoad);
+  const [IsCreatingNew, setIsCreatingNew] = useState(!scenarioToLoad);
   const [hasInitialized, setHasInitialized] = useState(false);
 
   const completionStateRef = useRef({ completedNodes: [], failedNodes: [] });
@@ -1073,7 +1073,7 @@ useEffect(() => {
             </button>
           )}
           
-          {isEditable && (
+          {isEditable && !IsCreatingNew && (
             <button className={styles.theme__button} onClick={handleSaveAsAndStayEditable}>
               SAVE AS
             </button>
