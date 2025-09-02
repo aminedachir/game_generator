@@ -42,14 +42,20 @@ let idnumber = 2;
 
 const getId = (existingNodes = []) => {
   let newId;
-  do {
+  let isUnique = false;
+  
+  const checkIfIdExists = (idToCheck) => {
+    return existingNodes.some(node => node.id === idToCheck);
+  };
+  
+  while (!isUnique) {
     idnumber = idnumber + 1;
     newId = `N${idnumber}`;
-  } while (existingNodes.some(node => node.id === newId));
+    isUnique = !checkIfIdExists(newId);
+  }
   
   return newId;
 };
-
 
 const DnDFlow = ({scenarioToLoad, onScenarioSaved }) => {
   const reactFlowWrapper = useRef(null);

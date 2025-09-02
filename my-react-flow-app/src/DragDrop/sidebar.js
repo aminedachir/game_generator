@@ -23,19 +23,23 @@ function Sidebar({nodeData, onLoadScenario, onNodeClick, existingNodes = []}) {
     }
   }, [existingNodes]);
 
-  const generateUniqueId = () => {
-    let newId;
-    do {
-      idCounter.current++;
-      newId = idCounter.current;
-    } while (existingNodes.some(node => 
-      node.id === newId.toString() || 
-      node.id === `N${newId}` || 
-      node.data?.uniqueId === newId
-    ));
-    
-    return newId;
-  };
+  const isIdUnique = (id) => {
+  return !existingNodes.some(node => 
+    node.id === id.toString() || 
+    node.id === `N${id}` || 
+    node.data?.uniqueId === id
+  );
+};
+
+const generateUniqueId = () => {
+  let newId;
+  do {
+    idCounter.current++;
+    newId = idCounter.current;
+  } while (!isIdUnique(newId));
+  
+  return newId;
+};
 
   const onDragStart = (event, nodeType, label, config, deviceData, uniqueId, deviceId) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
