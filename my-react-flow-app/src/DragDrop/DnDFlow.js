@@ -52,7 +52,7 @@ const DnDFlow = ({scenarioToLoad, onScenarioSaved }) => {
   const [currentScenarioName, setCurrentScenarioName] = useState('');
   const [isEditable, setIsEditable] = useState(!scenarioToLoad);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [isCreatingNew, setIsCreatingNew] = useState(!scenarioToLoad);
+  const [, setIsCreatingNew] = useState(!scenarioToLoad);
   const [hasInitialized, setHasInitialized] = useState(false);
 
   const completionStateRef = useRef({ completedNodes: [], failedNodes: [] });
@@ -342,7 +342,12 @@ const isRunningRef = useRef(false);
   });
 };
 
-  const checkForFlowCompletion = () => {
+  const getNextNodes = useCallback((currentNodeId) => {
+  const nextEdges = edges.filter(edge => edge.source === currentNodeId);
+  return nextEdges.map(edge => nodes.find(node => node.id === edge.target)).filter(Boolean);
+}, [edges, nodes]);
+
+  const checkForFlowCompletion = useCallback(() => {
   const conditionNodes = nodes.filter(node => node.data.deviceType === 'condition');
   
   if (conditionNodes.length === 0) {
@@ -400,8 +405,7 @@ const isRunningRef = useRef(false);
   }
   
   return false;
-};
-
+}, [nodes, executionState.completedNodes, executionState.failedNodes, getNextNodes]);
 
 
   const executeConditionNode = async (node) => {
@@ -482,10 +486,7 @@ const isRunningRef = useRef(false);
   console.log('Condition node satisfied - proceeding');
 };
 
-  const getNextNodes = (currentNodeId) => {
-    const nextEdges = edges.filter(edge => edge.source === currentNodeId);
-    return nextEdges.map(edge => nodes.find(node => node.id === edge.target)).filter(Boolean);
-  };
+  
 
   const generatePathId = () => {
     return `path_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -918,21 +919,21 @@ const isRunningRef = useRef(false);
 }, [rfInstance, setNodes, setEdges, setCurrentScenarioName, setIsEditable]);
 
   useEffect(() => {
-  if (!hasInitialized) {
-    if (scenarioToLoad) {
-      loadFlowFromBackend(scenarioToLoad);
-      setIsEditable(false);
-      setIsCreatingNew(false);
-    } else {
-      setIsEditable(true);
-      setIsCreatingNew(true);
-      setNodes(initialNodes);
-      setEdges([]);
-      setCurrentScenarioName('');
+    if (!hasInitialized) {
+      if (scenarioToLoad) {
+        loadFlowFromBackend(scenarioToLoad);
+        setIsEditable(false);
+        setIsCreatingNew(false);
+      } else {
+        setIsEditable(true);
+        setIsCreatingNew(true);
+        setNodes(initialNodes);
+        setEdges([]);
+        setCurrentScenarioName('');
+      }
+      setHasInitialized(true);
     }
-    setHasInitialized(true);
-  }
-}, [scenarioToLoad, hasInitialized, loadFlowFromBackend]);
+  }, [scenarioToLoad, hasInitialized, loadFlowFromBackend, setIsEditable, setIsCreatingNew, setNodes, setEdges, setCurrentScenarioName]);
 
 useEffect(() => {
   if (hasInitialized && scenarioToLoad) {
@@ -940,7 +941,7 @@ useEffect(() => {
   }
 }, [scenarioToLoad, hasInitialized, loadFlowFromBackend]);
 
-useEffect(() => {
+    useEffect(() => {
   completionStateRef.current = {
     completedNodes: executionState.completedNodes,
     failedNodes: executionState.failedNodes
@@ -971,9 +972,14 @@ useEffect(() => {
       }, 300); 
     }
   }
-}, [executionState.completedNodes, executionState.failedNodes, executionState.isRunning]);
- 
-
+}, [
+  executionState.completedNodes, 
+  executionState.failedNodes, 
+  executionState.isRunning, 
+  executionState.shouldStop, 
+  checkForFlowCompletion, 
+  updateExecutionState
+]);
   const handleSaveAs = async () => {
     const newScenarioName = prompt("Enter a new name for this scenario:");
     
