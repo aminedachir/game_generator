@@ -347,7 +347,7 @@ const isRunningRef = useRef(false);
 
   const executeDelayNode = async (node) => {
   const delaySeconds = node.data.config?.delaySeconds?.value || node.data.delaySeconds || 3;
-  console.log(`Timer node ${node.data.label} starting ${delaySeconds} second delay`);
+  alert(`Timer node ${node.data.label} starting ${delaySeconds} second delay`);
   
   const delayMs = parseInt(delaySeconds) * 1000;
   
