@@ -39,10 +39,17 @@ const initialNodes = [
 ];
 
 let idnumber = 2; 
-const getId = () => {
-  idnumber = idnumber + 1;
-  return `N${idnumber}`;
+
+const getId = (existingNodes = []) => {
+  let newId;
+  do {
+    idnumber = idnumber + 1;
+    newId = `N${idnumber}`;
+  } while (existingNodes.some(node => node.id === newId));
+  
+  return newId;
 };
+
 
 const DnDFlow = ({scenarioToLoad, onScenarioSaved }) => {
   const reactFlowWrapper = useRef(null);
@@ -743,7 +750,7 @@ const isRunningRef = useRef(false);
     y: event.clientY,
   });
   
-  const newNodeId = getId(); 
+  const newNodeId = getId(nodes); 
 
   const newNode = {
     id: newNodeId, 
@@ -761,9 +768,8 @@ const isRunningRef = useRef(false);
     },
   };
 
-  
   setNodes((nds) => nds.concat(newNode));
-}, [rfInstance, isEditable, setNodes]);
+}, [rfInstance, isEditable, setNodes, nodes]); 
 
 
   const validateFlow = () => {
@@ -896,26 +902,39 @@ const isRunningRef = useRef(false);
   };
 
   const loadFlowFromBackend = useCallback(async (flowId) => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/load-flow/${flowId}`);
+  try {
+    const response = await axios.get(`${API_BASE_URL}/load-flow/${flowId}`);
+    
+    if (response.data.error) {
+      throw new Error(response.data.error);
+    }
+    
+    setNodes(response.data.nodes || []);
+    setEdges(response.data.edges || []);
+    setCurrentScenarioName(flowId);
+    setIsCreatingNew(false);
+    setIsEditable(false);
+    
+    if (response.data.nodes && response.data.nodes.length > 0) {
+      const maxId = response.data.nodes.reduce((max, node) => {
+        const match = node.id.match(/^N?(\d+)$/);
+        if (match) {
+          const nodeNum = parseInt(match[1], 10);
+          return Math.max(max, nodeNum);
+        }
+        return max;
+      }, 2); 
       
-      if (response.data.error) {
-        throw new Error(response.data.error);
-      }
-      
-      setNodes(response.data.nodes || []);
-      setEdges(response.data.edges || []);
-      setCurrentScenarioName(flowId);
-      setIsCreatingNew(false);
-      setIsEditable(false);
-      
-      if (response.data.viewport && rfInstance) {
-        rfInstance.setViewport(response.data.viewport);
-      }
-      
-     } catch (error) {
-    console.error('Load error details:', error.response?.data);
-  }
+      idnumber = maxId;
+    }
+    
+    if (response.data.viewport && rfInstance) {
+      rfInstance.setViewport(response.data.viewport);
+    }
+    
+   } catch (error) {
+  console.error('Load error details:', error.response?.data);
+}
 }, [rfInstance, setNodes, setEdges, setCurrentScenarioName, setIsEditable]);
 
   useEffect(() => {
@@ -1138,8 +1157,12 @@ useEffect(() => {
             <Controls />
           </ReactFlow>
         </div>
+
         {isEditable && ( 
-          <Sidebar onLoadScenario={handleLoadScenario} />
+          <Sidebar 
+            onLoadScenario={handleLoadScenario} 
+            existingNodes={nodes}
+          />
         )}
 
         {isEditable && (

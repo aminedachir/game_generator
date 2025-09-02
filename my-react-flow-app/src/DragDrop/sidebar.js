@@ -4,9 +4,38 @@ import './style.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
-function Sidebar({nodeData, onLoadScenario, onNodeClick}) {
+function Sidebar({nodeData, onLoadScenario, onNodeClick, existingNodes = []}) {
   const [devices, setDevices] = useState({});
   const idCounter = useRef(0);
+
+  useEffect(() => {
+    if (existingNodes.length > 0) {
+      const maxId = existingNodes.reduce((max, node) => {
+        const match = node.id.match(/^N?(\d+)$/);
+        if (match) {
+          const nodeNum = parseInt(match[1], 10);
+          return Math.max(max, nodeNum);
+        }
+        return max;
+      }, 0);
+      
+      idCounter.current = Math.max(idCounter.current, maxId);
+    }
+  }, [existingNodes]);
+
+  const generateUniqueId = () => {
+    let newId;
+    do {
+      idCounter.current++;
+      newId = idCounter.current;
+    } while (existingNodes.some(node => 
+      node.id === newId.toString() || 
+      node.id === `N${newId}` || 
+      node.data?.uniqueId === newId
+    ));
+    
+    return newId;
+  };
 
   const onDragStart = (event, nodeType, label, config, deviceData, uniqueId, deviceId) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
@@ -50,12 +79,11 @@ function Sidebar({nodeData, onLoadScenario, onNodeClick}) {
         <br></br><br></br>
         {Object.keys(devices).length > 0 ? (
           Object.entries(devices).map(([deviceId, deviceData]) => {
-            const uniqueId = idCounter.current;
-            idCounter.current++;
+            const uniqueId = generateUniqueId();
             
             return (
               <div
-                key={uniqueId}
+                key={`device-${deviceId}-${uniqueId}`}
                 className="dndnode device"
                 onDragStart={(event) => onDragStart(
                   event, 
@@ -77,12 +105,14 @@ function Sidebar({nodeData, onLoadScenario, onNodeClick}) {
         )}
         <br></br><br></br>
         <p className={styles.titledev2}>virtual nodes</p>
-          <div
-            className="dndnode device"
-            onDragStart={(event) => onDragStart(
+        <div
+          className="dndnode device"
+          onDragStart={(event) => {
+            const uniqueId = generateUniqueId();
+            onDragStart(
               event,
               'delay',  
-              `Timer-${idCounter.current++}`,
+              `Timer-${uniqueId}`,
               {
                 "delaySeconds": {
                   'type': 'number',
@@ -90,24 +120,28 @@ function Sidebar({nodeData, onLoadScenario, onNodeClick}) {
                 }
               },
               { deviceType: 'delay' }, 
-              idCounter.current,
+              uniqueId,
               null
-            )}
-            draggable
-          >
-            Timer
-          </div>
+            );
+          }}
+          draggable
+        >
+          Timer
+        </div>
         <div
           className="dndnode device"
-          onDragStart={(event) => onDragStart(
-            event,
-            'condition',
-            `Condition-${idCounter.current++}`,
-            {},
-            null, 
-            idCounter.current,
-            null
-          )}
+          onDragStart={(event) => {
+            const uniqueId = generateUniqueId();
+            onDragStart(
+              event,
+              'condition',
+              `Condition-${uniqueId}`,
+              {},
+              null, 
+              uniqueId,
+              null
+            );
+          }}
           draggable
         >
           Condition
@@ -116,6 +150,5 @@ function Sidebar({nodeData, onLoadScenario, onNodeClick}) {
     </aside>
   );
 }
-
 
 export default Sidebar;
