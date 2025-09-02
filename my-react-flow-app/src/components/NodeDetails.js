@@ -1,6 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
 import styles from './MyComponent.module.css';
-import { Background } from 'reactflow';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
