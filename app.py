@@ -163,10 +163,6 @@ def start(device_id):
         scenario_name = data.get('scenarioName')
         
         logger.info(f"Starting device {device_id} for node {node_id} in scenario {scenario_name}")
-        logger.info(f"Device config: {config}")
-        
-        redis_client.set(f'{device_id}:current_config', json.dumps(config))
-        logger.info(f"Stored config for device {device_id}")
         
         simple_config = {}
         for key, value in config.items():
@@ -356,20 +352,19 @@ def serve_uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
     
-@app.route('/send_status/<device_id>', methods=['POST'])
-def send_status(device_id):
+@app.route('/send_status/<node_id>', methods=['POST'])
+def send_status(node_id):
     """
-    Store device status in Redis
-    Expected JSON payload: {'status': 'completed|failed|in progress'}
+    Store node status in Redis and trigger next node if completed
     """
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'error': 'No data provided'}), 400
-        
+
         status = data.get('status')
-        
+
         if not status:
             return jsonify({'error': 'Status field is required'}), 400
         
@@ -379,29 +374,25 @@ def send_status(device_id):
                 'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'
             }), 400
         
-        redis_client.set(f'{device_id}:status', status)
-        
-        logger.info(f"Device {device_id} status updated to: {status}")
+        redis_client.set(f'flow_execution:{node_id}', status)
+        logger.info(f"Node {node_id} status updated to: {status}")
         
         return jsonify({
-            'status': 'success',
-            'message': f'Device {device_id} status updated to {status}',
-            'device_id': device_id,
-            'device_status': status  
+            'node_id': node_id,
+            'status': status
         }), 200
         
     except Exception as e:
-        logger.error(f"Error updating device status: {str(e)}")
+        logger.error(f"Error updating node status: {str(e)}")
         return jsonify({
             'status': 'error',
-            'message': f'Failed to update device status: {str(e)}'
+            'message': f'Failed to update node status: {str(e)}'
         }), 500
 
 @app.route('/get_status/<node_id>', methods=['GET'])
 def get_status(node_id):
     try:
         status = redis_client.get(f"flow_execution:{node_id}")
-        print(status)
 
         return jsonify({
             'node_id': node_id,
